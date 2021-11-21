@@ -4,7 +4,7 @@ import logging
 from flask import Flask, jsonify, json, render_template, request, url_for, redirect, flash
 from werkzeug.exceptions import abort
 
-# global variable used to count the number of db connections
+# global variable used to count the number of open db connections
 ccount = 0
 
 # Function to get a database connection.
@@ -18,10 +18,12 @@ def get_db_connection():
 
 # Function to get a post using its ID
 def get_post(post_id):
+    global ccount
     connection = get_db_connection()
     post = connection.execute('SELECT * FROM posts WHERE id = ?',
                         (post_id,)).fetchone()
     connection.close()
+    ccount = ccount - 1
     return post
 
 # Define the Flask application
@@ -31,9 +33,11 @@ app.config['SECRET_KEY'] = 'your secret key'
 # Define the main route of the web application 
 @app.route('/')
 def index():
+    global ccount
     connection = get_db_connection()
     posts = connection.execute('SELECT * FROM posts').fetchall()
     connection.close()
+    ccount = ccount - 1
     return render_template('index.html', posts=posts)
 
 # Define how each individual article is rendered 
@@ -54,6 +58,7 @@ def about():
 # Define the post creation functionality 
 @app.route('/create', methods=('GET', 'POST'))
 def create():
+    global ccount
     if request.method == 'POST':
         title = request.form['title']
         content = request.form['content']
@@ -66,6 +71,7 @@ def create():
                          (title, content))
             connection.commit()
             connection.close()
+            ccount = ccount - 1
 
             return redirect(url_for('index'))
 
@@ -89,6 +95,8 @@ def metrics():
     postCountQuery = connection.execute("select count(*) from posts")
     postCountData = postCountQuery.fetchone()
     postCount = postCountData[0]
+    connection.close()
+    ccount = ccount - 1
     
     response = app.response_class(
             response=json.dumps({"db_connection_count":ccount,"post_count":postCount}),
