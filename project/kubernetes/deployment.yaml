@@ -11,6 +11,9 @@ spec:
     matchLabels:
       app: techtrends
   template:
+    metadata:
+      labels:
+        app: techtrends    
     spec:
       containers:
       - image: harveygreen/techtrends:latest
