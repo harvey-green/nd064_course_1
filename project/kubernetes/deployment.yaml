@@ -3,8 +3,13 @@ kind: Deployment
 metadata:
   name: techtrends
   namespace: sandbox
+  labels:
+    app: techtrends
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: techtrends
   template:
     spec:
       containers:

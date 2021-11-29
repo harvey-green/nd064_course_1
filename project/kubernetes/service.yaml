@@ -3,7 +3,12 @@ kind: Service
 metadata:
   name: techtrends
   namespace: sandbox
+  labels:
+    app: techtrends
 spec:
+  selector:
+    matchLabels:
+      app: techtrends
   ports:
   - port: 4111
     protocol: TCP
