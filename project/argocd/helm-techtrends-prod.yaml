@@ -12,6 +12,6 @@ spec:
     helm:
       valueFiles:
       - values-prod.yaml
-    path: tree/main/project/helm
+    path: project/helm
     repoURL: https://github.com/harvey-green/nd064_course_1
     targetRevision: HEAD
