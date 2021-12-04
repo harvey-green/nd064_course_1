@@ -5,35 +5,41 @@ import sys
 from flask import Flask, jsonify, json, render_template, request, url_for, redirect, flash
 from werkzeug.exceptions import abort
 
-# global variable used to count the number of db connections
-ccount = 0
-
 # Function to get a database connection.
 # This function connects to database with the name `database.db`
 def get_db_connection():
-    global ccount
-    connection = sqlite3.connect('database.db')
-    connection.row_factory = sqlite3.Row
-    ccount = ccount + 1
+    try:
+        connection = sqlite3.connect('database.db')
+        connection.row_factory = sqlite3.Row
+        app.config['DB_CONN_COUNTER'] = app.config['DB_CONN_COUNTER'] + 1
+    except:
+        connection = None
+        app.logger.error('Error opening database connection!')
+        
     return connection
 
 # Function to get a post using its ID
 def get_post(post_id):
-    global ccount
     connection = get_db_connection()
-    post = connection.execute('SELECT * FROM posts WHERE id = ?',
+    if connection is None:
+        post = None
+    else:
+        post = connection.execute('SELECT * FROM posts WHERE id = ?',
                         (post_id,)).fetchone()
-    connection.close()
+        connection.close()
+        
     return post
 
 # Define the Flask application
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your secret key'
 
+# flash config variable used to count the number of db connections
+app.config['DB_CONN_COUNTER'] = 0
+
 # Define the main route of the web application 
 @app.route('/')
 def index():
-    global ccount
     connection = get_db_connection()
     posts = connection.execute('SELECT * FROM posts').fetchall()
     connection.close()
@@ -46,10 +52,10 @@ def post(post_id):
     post = get_post(post_id)
         
     if post is None:
-        app.logger.info('Article does not exist - returning 404!')
+        app.logger.error('Post with id %d not found, returning 404!', post_id)
         return render_template('404.html'), 404
     else:
-        app.logger.info('Article "' + post['title'] + '" retrieved!')
+        app.logger.info('Article "%s" retrieved!', post['title'])
         return render_template('post.html', post=post)
 
 # Define the About Us page
@@ -61,7 +67,6 @@ def about():
 # Define the post creation functionality 
 @app.route('/create', methods=('GET', 'POST'))
 def create():
-    global ccount
     if request.method == 'POST':
         title = request.form['title']
         content = request.form['content']
@@ -75,7 +80,7 @@ def create():
             connection.commit()
             connection.close()
             ccount = ccount - 1
-            app.logger.info('New article "' + title + '" created!')
+            app.logger.info('New article "%s" created!', title)
 
             return redirect(url_for('index'))
 
@@ -94,15 +99,17 @@ def healthcheck():
 
 @app.route('/metrics')
 def metrics():
-    global ccount
     connection = get_db_connection()
-    postCountQuery = connection.execute("select count(*) from posts")
-    postCountData = postCountQuery.fetchone()
-    postCount = postCountData[0]
-    connection.close()
-    
+    if connection is None:
+        postCount = 0
+    else:
+        postCountQuery = connection.execute("select count(*) from posts")
+        postCountData = postCountQuery.fetchone()
+        postCount = postCountData[0]
+        connection.close()
+        
     response = app.response_class(
-            response=json.dumps({"db_connection_count":ccount,"post_count":postCount}),
+            response=json.dumps({"db_connection_count":app.config['DB_CONN_COUNTER'],"post_count":postCount}),
             status=200,
             mimetype='application/json'
     )
