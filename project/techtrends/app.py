@@ -5,7 +5,7 @@ import sys
 from flask import Flask, jsonify, json, render_template, request, url_for, redirect, flash
 from werkzeug.exceptions import abort
 
-# global variable used to count the number of open db connections
+# global variable used to count the number of db connections
 ccount = 0
 
 # Function to get a database connection.
@@ -24,7 +24,6 @@ def get_post(post_id):
     post = connection.execute('SELECT * FROM posts WHERE id = ?',
                         (post_id,)).fetchone()
     connection.close()
-    ccount = ccount - 1
     return post
 
 # Define the Flask application
@@ -38,7 +37,6 @@ def index():
     connection = get_db_connection()
     posts = connection.execute('SELECT * FROM posts').fetchall()
     connection.close()
-    ccount = ccount - 1
     return render_template('index.html', posts=posts)
 
 # Define how each individual article is rendered 
@@ -102,7 +100,6 @@ def metrics():
     postCountData = postCountQuery.fetchone()
     postCount = postCountData[0]
     connection.close()
-    ccount = ccount - 1
     
     response = app.response_class(
             response=json.dumps({"db_connection_count":ccount,"post_count":postCount}),
