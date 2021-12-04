@@ -1,6 +1,7 @@
 import sqlite3
 import logging
 import sys
+import os.path
 
 from flask import Flask, jsonify, json, render_template, request, url_for, redirect, flash
 from werkzeug.exceptions import abort
@@ -9,12 +10,16 @@ from werkzeug.exceptions import abort
 # This function connects to database with the name `database.db`
 def get_db_connection():
     try:
-        connection = sqlite3.connect('database.db')
-        connection.row_factory = sqlite3.Row
-        app.config['DB_CONN_COUNTER'] = app.config['DB_CONN_COUNTER'] + 1
+        if os.path.exists('database.db'):            
+            connection = sqlite3.connect('database.db')
+            connection.row_factory = sqlite3.Row
+            app.config['DB_CONN_COUNTER'] = app.config['DB_CONN_COUNTER'] + 1
+        else:
+            connection = None
+            app.logger.error('Error opening database connection: database.db file not found!')
     except:
         connection = None
-        app.logger.error('Error opening database connection!')
+        app.logger.error('Error opening database connection (exception)!')
         
     return connection
 
@@ -79,7 +84,6 @@ def create():
                          (title, content))
             connection.commit()
             connection.close()
-            ccount = ccount - 1
             app.logger.info('New article "%s" created!', title)
 
             return redirect(url_for('index'))
@@ -88,11 +92,19 @@ def create():
     
 @app.route('/healthz')
 def healthcheck():
-    response = app.response_class(
-            response=json.dumps({"result":"OK - healthy"}),
-            status=200,
-            mimetype='application/json'
-    )
+    connection = get_db_connection()
+    if connection is None:
+        response = app.response_class(
+                response=json.dumps({"result":"Failed - unhealthy"}),
+                status=500,
+                mimetype='application/json'
+        )
+    else:
+        response = app.response_class(
+                response=json.dumps({"result":"OK - healthy"}),
+                status=200,
+                mimetype='application/json'
+        )
 
     #app.logger.info('Status request successfull')
     return response
