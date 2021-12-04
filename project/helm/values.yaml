@@ -1,3 +1,5 @@
+appName: techtrends
+
 namespace:
   name: sandbox
 
@@ -8,7 +10,7 @@ service:
   type: ClusterIP
 
 image:
-  repository: techtrends 
+  repository: harveygreen/techtrends 
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -22,6 +24,14 @@ resources:
     memory: 128Mi
     CPU: 500m
 
-containerPort: 3111
-livenessProbePath: /healthz
-readinessProbePath: /healthz
+container:
+  port: 3111
+  protocol: TCP
+
+livenessProbe:
+  path: /healthz
+  port: 3111
+
+readinessProbe:
+  path: /healthz
+  port: 3111
